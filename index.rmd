@@ -1,0 +1,164 @@
+---
+title: "Practical Machine Learning Final Project"
+author: "David Nuelle"
+date: "November 26, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The goal of the capstone project in the Practical Machine Learning course was to create a model that accurately predicts how well each participant performs a barbell lift. In the end, I believe I succeeded in that goal, however my path may have been somewhat indirect. The challenge with this data set is that the size and complexity of the spreadsheet made the data very hard to work with. The factors I struggled with were (1) the sheer size of the data set, (particularly in comparison to the other data sets used in this course), (2) the number of missing values in the data set, and (3) the fact that the data frame was not fully numeric. My process was to perform the work in three steps. First, I downloaded the and tried understand the data in the context of what we are being asked to do. Second, I intended to run several tests on the training data using the methods presented to us by the course to determine the optimal method for this data set. Finally, I would run the best results against the testing data set to verify the results I derived.
+
+Initial Steps:
+The size and complexity of the data set made the initial step of capturing and understanding the data difficult. I would point to three factors that made this a challenge:
+
+ * It was not obvious to me what each of the factors was trying to measure. It may not be imperative to understand the data in a qualitative sense, but I thought it might help. That said, what was being measured and the measurement output were something of a mystery to me.
+ 
+ * The sheer size of the data was much larger than anything we had worked with in the past so trying to manipulate the data was a challenge.
+ 
+ * The data was irregular in the sense that some of the factors were non-numeric and some of the factors had many missing values. Learning how to manipulating the data to conform to rpart and train was a minor logistical issue but one that I overcame with some research.
+ 
+My first step was to randomize the data so that the dependent variable was randomly distributed throughout the data set. Once the data was corraled into the correct form, I needed to determine a strategy to find the optimal features. Step one was to eliminate the data that was insufficently populated. While I could have tried to build a model with the command na.action = na.omit in R, my feeling was with as much as there was in the spreadsheet, the fields that were not widely populated were going to be noisy. I did make several attempts to go back and run the rpart function over the entire data set but I received the following error:
+	
+  Error in model.frame.default(formula = K$classe ~ ., data = A, na.action = function (object,  :variable lengths differ (found for 'roll_belt')
+  
+  I recognize that I may be losing some information but the irregularity of the output may have compromised the rest of the model and could have caused me to overfit. The resulting data was reduced to 51 fields before I attempted to build my initial model.
+  
+  My next goal was to decide how to proceed with the rest of the data. Folowing up on the lectures about pre-processing, my initial instinct was to try to preprocess the data so that I could get a sense of what features (factors) were significant. To do this, I ran the slimmed down matrix through the PRINCOMP function to determine what factors were the most significant. The model from the PRINCOMP analysis was run though the SUMMARY function to receive the following output:
+
+I then ran a summary to determine the importance of each of the components:
+
+ 
+```{r, include=TRUE}
+rmla <- read.csv("/Users/DAVID/Documents/R Data sheets/pml_finalproj/rmla.csv")
+myfact <- princomp(rmla)
+summary(myfact)
+```
+
+In reviewing the above table, it was clear that the first 6 principal components explained 88.1% of the variance so I decided to use the factors that comprised the principal components as a starting point for a parsimonious model. I used the LOADINGS function in PRINCOMP to find the most significant contributors to the model. The output from the loadings function can be found at the bottom of this file. 
+
+Based on this output I decided to focus on the following factors as most significant in this model:
+
+accel_arm_x
+accel_arm_z
+magnet_arm_x
+magnet_arm_y
+magnet_arm_z 
+accel_dumbbell_z
+magnet_dumbbell_x
+magnet_dumbbell_y
+magnet_dumbbell_z
+accel_forearm_x
+accel_forearm_y
+accel_forearm_z
+magnet_forearm_x
+magnet_forearm_y
+magnet_forearm_z
+
+Now that I had decided on the factors I would use, I had to determine what algorithm I would use to create the model. Because this is a fairly clear classification problem, I decided to use a tree to attempt to classify how well each exercise was done. After reviewing a few of the available models, I settled on the recursive partitioning algorithm. To simplify matters, I decided to use the RPART function, as opposed to the TRAIN function with the rpart method, because it had fewer parameters to choose from and I assuemd that while building my first model, simpler was probably better.
+
+Next, I decided to take as a baseline a model built using all 51 parameters to see if my reduced feature set would beat a model that used most of the relevant available data. To test this, I decided to use the k fold partitioning method outlined in the notes. To build and test the models, first I randomized the data by row and then I created 10 data sets from the 19622 lines of observations. The model I chose to use was the rpart function. I used all of the 51 pieces of data that I felt were useful and ran the following command:
+
+```{r, include=FALSE}
+A <- rmla[1:2000,]
+B <- rmla[2001:4000,]
+C <- rmla[4001:6000,]
+D <- rmla[6001:8000,]
+E <- rmla[8001:10000,]
+F <- rmla[10001:12000,]
+G <- rmla[12001:14000,]
+H <- rmla[14001:16000,]
+I <- rmla[16001:18000,]
+J <- rmla[18001:19622,]
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r, include = TRUE, }
+library(rpart)
+rp_trA <- rpart(A$classe ~ ., data = A, na.action = na.omit,  method = "class")
+head(A$classe)
+```
+The  confusion matrix for this run was as follows:
+
+```{r, include=TRUE}
+printcp(rp_trA)
+```
+
+since the Root node error: 1448/2000 = 0.724, I estimated the cross validated error rate to be .724*.41644 = .2999
+
+Using the output created by the function, I applied the model to the next set of 2000 pieces of data using the predict function. Although the classification error from the table was not great, the prediction error for the next set of data was not bad:
+
+mean(predA == B$classe)
+[1] 0.729
+
+
+table(pred=predA,true=B$classe)
+    true
+pred   1   2   3   4   5
+   1 468  32   6  11  12
+   2  48 273  40  28  70
+   3  40  59 296  38  38
+   4  36  13  26 220  31
+   5   1   2   1  10 201
+mean(predA == B$classe)
+[1] 0.729
+
+
+table(pred=predA,true=B$classe)
+    true
+pred   1   2   3   4   5
+   1 468  32   6  11  12
+   2  48 273  40  28  70
+   3  40  59 296  38  38
+   4  36  13  26 220  31
+   5   1   2   1  10 201
+
+I continued to cross validate the the model to see if I would get consistent results. In this case, I took the output from the original model and applied it to the next sets of data (partition C:H, each partition 2000 lines):
+
+mean(predB == C$classe)
+[1] 0.7025
+mean(predC == D$classe)
+[1] 0.729
+mean(predD == E$classe)
+[1] 0.7225
+mean(predE == F$classe)
+[1] 0.7335
+mean(predF == G$classe)
+[1] 0.717
+mean(predG == H$classe)
+[1] 0.718
+
+Based on the consistency of the output, I felt this was a pretty good baseline forecast, although I felt some filtering of the inputs might lead to a better prediction. So the next step I took was to take the pieces of data that had the highest explanation of variance and ran them to find the best outcome that was consistently replicable. I applied the rpart function to the factors that explained most variance to see if I could get a better outcome. The results were worse than the initial effort.
+
+mean(predX == B$classe)
+[1] 0.51
+
+true
+pred   1   2   3   4   5
+   1 445 110  54  21  68
+   2  13  88  27  10  27
+   3  69  81 224  77  93
+   4  61  41  64 175  76
+   5   5  59   0  24  88
+mean(predY == C$classe)
+[1] 0.491
+mean(predZ == D$classe)
+[1] 0.4725
+
+So based on this, it does seem like more data leads to a better prediction even if the data does not explain quite a bit of variance. My final model for predicting the test data is as follows:
+
+```{r}
+rp_trA
+```
+```{r}
+plotcp(rp_trA)
+```
+```{r, include=TRUE}
+loadings(myfact)
+options(max.print = 1000000)
+```
+
