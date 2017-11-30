@@ -90,64 +90,50 @@ printcp(rp_trA)
 
 since the Root node error: 1448/2000 = 0.724, I estimated the cross validated error rate to be .724*.41644 = .2999
 
+
 Using the output created by the function, I applied the model to the next set of 2000 pieces of data using the predict function. Although the classification error from the table was not great, the prediction error for the next set of data was not bad:
 
+```{r, include=TRUE}
+predA <- predict(rp_trA, B, type="class")
 mean(predA == B$classe)
-[1] 0.729
-
-
+```
+```{r, include=TRUE}
 table(pred=predA,true=B$classe)
-    true
-pred   1   2   3   4   5
-   1 468  32   6  11  12
-   2  48 273  40  28  70
-   3  40  59 296  38  38
-   4  36  13  26 220  31
-   5   1   2   1  10 201
-mean(predA == B$classe)
-[1] 0.729
+```
 
 
-table(pred=predA,true=B$classe)
-    true
-pred   1   2   3   4   5
-   1 468  32   6  11  12
-   2  48 273  40  28  70
-   3  40  59 296  38  38
-   4  36  13  26 220  31
-   5   1   2   1  10 201
+I continued to cross validate the the model to see if I would get consistent results. In this case, I took the output from the original model and applied it to the next sets of data (partition C:G, each partition 2000 lines):
 
-I continued to cross validate the the model to see if I would get consistent results. In this case, I took the output from the original model and applied it to the next sets of data (partition C:H, each partition 2000 lines):
 
-mean(predB == C$classe)
-[1] 0.7025
-mean(predC == D$classe)
-[1] 0.729
-mean(predD == E$classe)
-[1] 0.7225
-mean(predE == F$classe)
-[1] 0.7335
-mean(predF == G$classe)
-[1] 0.717
-mean(predG == H$classe)
-[1] 0.718
+* mean(predA == B$classe) [1] 0.7025
+* mean(predC == D$classe) [1] 0.729
+* mean(predD == E$classe) [1] 0.7225
+* mean(predE == F$classe) [1] 0.7335
+* mean(predF == G$classe) [1] 0.717
+* mean(predG == H$classe) [1] 0.718
 
 Based on the consistency of the output, I felt this was a pretty good baseline forecast, although I felt some filtering of the inputs might lead to a better prediction. So the next step I took was to take the pieces of data that had the highest explanation of variance and ran them to find the best outcome that was consistently replicable. I applied the rpart function to the factors that explained most variance to see if I could get a better outcome. The results were worse than the initial effort.
 
-mean(predX == B$classe)
-[1] 0.51
+```{r, include=TRUE}
+rp_trX <- rpart(A$classe ~ accel_arm_x + accel_arm_z + magnet_arm_x + magnet_arm_y + magnet_arm_z + accel_dumbbell_z+ magnet_dumbbell_x + magnet_dumbbell_y + magnet_dumbbell_z + accel_forearm_x + accel_forearm_y + accel_forearm_z + magnet_forearm_x + magnet_forearm_y + magnet_forearm_z, data = A, na.action = na.omit,  method = "class")
+```
 
-true
-pred   1   2   3   4   5
-   1 445 110  54  21  68
-   2  13  88  27  10  27
-   3  69  81 224  77  93
-   4  61  41  64 175  76
-   5   5  59   0  24  88
-mean(predY == C$classe)
-[1] 0.491
-mean(predZ == D$classe)
-[1] 0.4725
+I then ran the preduct function over the model to see how well it would predict the cross validation data series
+
+```{r, include=TRUE}
+predX <- predict(rp_trX, B, type="class")
+mean(predX == B$classe)
+```
+
+The prediction table also demonstrated a significalty inferior model:
+
+```{r, include=TRUE}
+table(pred=predX,true=B$classe)
+```
+
+
+* mean(predY == C$classe) [1] 0.491
+* mean(predZ == D$classe) [1] 0.4725
 
 So based on this, it does seem like more data leads to a better prediction even if the data does not explain quite a bit of variance. My final model for predicting the test data is as follows:
 
