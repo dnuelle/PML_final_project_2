@@ -1,7 +1,7 @@
 ---
 title: "Practical Machine Learning Final Project"
 author: "David Nuelle"
-date: "November 26, 2017"
+date: "December 12, 2017"
 output: html_document
 ---
 
