@@ -9,9 +9,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-The goal of the capstone project in the Practical Machine Learning course was to create a model that accurately predicts how well each participant performs a barbell lift. In the end, I believe I succeeded in that goal, however my path may have been somewhat indirect. The challenge with this data set is that the size and complexity of the spreadsheet made the data very hard to work with. The factors I struggled with were (1) the size of the data set, (particularly in comparison to the other data sets used in this course), (2) the number of missing values in the data set, and (3) the fact that the data frame was not fully numeric. My process was to perform the work in three steps. First, I downloaded the and tried understand the data in the context of what we are being asked to do. Second, I intended to run several tests on the training data using the methods presented to us by the course to determine the optimal method for this data set. Finally, I would run the best results against the testing data set to verify the results I derived.
+The goal of the capstone project in the Practical Machine Learning course was to create a model that accurately predicts how well each participant performs a barbell lift. This write up is based on the paper that describes work in the field of Human Activity Recognition. This paper can be found here: http://groupware.les.inf.puc-rio.br/har. Thanks very much to the authors for allowing us to use this data. My process was to perform the work in three steps. First, I downloaded the and tried understand the data in the context of what we are being asked to do. Second, I intended to run several tests on the training data using the methods presented to us by the course to determine the optimal method for this data set. Finally, I would run the best results against the testing data set to verify the results I derived.
 
-Initial Steps:
+#Initial Steps:
+
 The size and complexity of the data set made the initial step of capturing and understanding the data difficult. I would point to three factors that made this a challenge:
 
  * It was not obvious to me what each of the factors was trying to measure. It may not be imperative to understand the data in a qualitative sense, but I thought it might help. That said, what was being measured and the measurement output were something of a mystery to me.
@@ -25,6 +26,8 @@ My first step was to randomize the data so that the dependent variable was rando
   Error in model.frame.default(formula = K$classe ~ ., data = A, na.action = function (object,  :variable lengths differ (found for 'roll_belt')
   
   I recognize that I may be losing some information but the irregularity of the output may have compromised the rest of the model and could have caused me to overfit. The resulting data was reduced to 51 fields before I attempted to build my initial model.
+  
+#Building the Model
   
   My next goal was to decide how to proceed with the rest of the data. Folowing up on the lectures about pre-processing, my initial instinct was to try to preprocess the data so that I could get a sense of what features (factors) were significant. To do this, I ran the slimmed down matrix through the PRINCOMP function to determine what factors were the most significant. The model from the PRINCOMP analysis was run though the SUMMARY function to receive the following output:
 
@@ -79,9 +82,12 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 
 ```{r, include = TRUE, }
 library(rpart)
+A$classe <- as.factor(A$classe)
 rp_trA <- rpart(A$classe ~ ., data = A, na.action = na.omit,  method = "class")
 head(A$classe)
 ```
+#Calculating the Error
+
 The  confusion matrix for this run was as follows:
 
 ```{r, include=TRUE}
@@ -135,7 +141,45 @@ table(pred=predX,true=B$classe)
 * mean(predY == C$classe) [1] 0.491
 * mean(predZ == D$classe) [1] 0.4725
 
-So based on this, it does seem like more data leads to a better prediction even if the data does not explain quite a bit of variance. My final model for predicting the test data is as follows:
+So based on this, it does seem like more data leads to a better prediction even if the data does not explain quite a bit of variance. I decided to continue to try to improve the model as I did nto think that model was accurate enough for the test data. Moving forward, I decided to try to use the random forest model in CARET to improve the results. I started by using the 51 variables that gave me the best result in rpart. The intital results were encouraging:
+
+
+
+```{r, include = TRUE, }
+library(caret)
+rf_A <- train(classe ~ ., data = A,  method = "rf")
+print(rf_A)
+```
+Using cross validated data, this model continued to perform well:
+
+```{r, include =TRUE}
+predA <- predict(rf_A, B)
+table(pred=predA, true=B$classe)
+```
+
+```{r, include=TRUE}
+mean(predA == B$classe)
+```
+```{r, include =TRUE}
+predC <- predict(rf_A, C)
+table(pred=predC, true=C$classe)
+```
+
+```{r, include=TRUE}
+predD <- predict(rf_A, D)
+table(pred=predD, true= trData$classe)
+```
+
+
+Based on these results, this model looks far superior and it is what I used to predict the training variables. The final preduction for the testing set is as follows:
+
+```{r, include=TRUE}
+rmla <- read.csv("/Users/DAVID/Documents/R Data sheets/pml_finalproj/test.csv")
+predTest <- predict(rf_A, test)
+predTest
+```
+
+
 
 ```{r}
 rp_trA
